@@ -1,43 +1,85 @@
-# API REST para loja online — `bd_dsapi`
+# API REST para loja online com Hono e TypeScript
 
-API desenvolvida em TypeScript com Node.js, Hono.js e MySQL. O projeto permite cadastrar clientes, consultar produtos disponíveis, criar e consultar pedidos, além de oferecer operações administrativas para produtos e pedidos.
+API REST de uma loja online desenvolvida em TypeScript. Clientes podem se cadastrar, consultar produtos disponíveis, realizar pedidos e consultar seu histórico. Rotas administrativas permitem gerenciar produtos e pedidos.
+
+O projeto utiliza obrigatoriamente o banco MySQL `bd_dsapi` e segue o diagrama ER proposto na atividade.
 
 ## Tecnologias
 
 - Node.js 20+
 - TypeScript
-- Hono.js e `@hono/node-server`
+- Hono.js com `@hono/node-server`
 - MySQL 8+
 - mysql2 com consultas parametrizadas e transações
 - Zod para validação
 - Middlewares nativos do Hono para CORS, cabeçalhos seguros e logs
-- Node Test Runner com requisições nativas ao `app.fetch`
+- Node Test Runner com requisições ao `app.fetch` do Hono
+
+## Estrutura do projeto
+
+```text
+bd_dsapi-api/
+├── database/
+│   ├── schema.sql          # banco, tabelas, relações e índices
+│   └── seed.sql            # dados iniciais para testes manuais
+├── src/
+│   ├── config/             # conexão com o MySQL
+│   ├── errors/             # erro de domínio da aplicação
+│   ├── middlewares/        # proteção das rotas administrativas
+│   ├── routes/             # endpoints públicos e administrativos
+│   ├── schemas/            # validações com Zod
+│   ├── utils/              # leitura e validação de requisições
+│   ├── app.ts              # configuração da aplicação Hono
+│   └── server.ts           # inicialização do servidor Node.js
+├── test/                   # testes automatizados
+├── .env.example
+├── package.json
+└── tsconfig.json
+```
 
 ## Como executar
 
-1. Crie a estrutura do banco:
+1. Instale as dependências:
+
+   ```bash
+   npm install
+   ```
+
+2. Crie a estrutura e os dados iniciais do banco:
 
    ```bash
    mysql -u root -p < database/schema.sql
    mysql -u root -p < database/seed.sql
    ```
 
-2. Configure a aplicação:
+3. Copie `.env.example` para `.env` e ajuste as credenciais do MySQL.
 
-   ```bash
-   cp .env.example .env
-   npm install
-   ```
-
-3. Altere no `.env` as credenciais do MySQL e defina uma chave administrativa segura.
-
-4. Inicie a API:
+4. Inicie a API em modo de desenvolvimento:
 
    ```bash
    npm run dev
    ```
 
-A API estará disponível em `http://localhost:3000`. O nome padrão do banco é obrigatoriamente `bd_dsapi`.
+A API estará disponível em `http://localhost:3000`.
+
+### Variáveis de ambiente
+
+| Variável | Finalidade | Valor padrão |
+|---|---|---|
+| `PORT` | Porta HTTP da API | `3000` |
+| `DB_HOST` | Servidor MySQL | `localhost` |
+| `DB_PORT` | Porta do MySQL | `3306` |
+| `DB_USER` | Usuário do MySQL | `root` |
+| `DB_PASSWORD` | Senha do MySQL | vazia |
+| `DB_NAME` | Nome do banco | `bd_dsapi` |
+| `ADMIN_API_KEY` | Chave das rotas administrativas | sem padrão |
+
+Para compilar e executar a versão de produção:
+
+```bash
+npm run build
+npm start
+```
 
 ## Endpoints públicos
 
@@ -63,6 +105,14 @@ A API estará disponível em `http://localhost:3000`. O nome padrão do banco é
 }
 ```
 
+Exemplo com cURL:
+
+```bash
+curl -X POST http://localhost:3000/api/clientes \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Maria Silva","altura":1.65,"nascimento":"1995-04-20","cidade_id":1}'
+```
+
 ### Criação de pedido
 
 ```json
@@ -81,6 +131,11 @@ A criação ocorre dentro de uma transação: o estoque é bloqueado, verificado
 ## Endpoints administrativos
 
 Envie a chave definida em `ADMIN_API_KEY` no cabeçalho `x-admin-key`.
+
+```bash
+curl http://localhost:3000/api/admin/produtos \
+  -H "x-admin-key: sua-chave-administrativa"
+```
 
 | Método | Endpoint | Descrição |
 |---|---|---|
@@ -112,6 +167,7 @@ Envie a chave definida em `ADMIN_API_KEY` no cabeçalho `x-admin-key`.
 - `404 Not Found`: recurso inexistente.
 - `409 Conflict`: estoque insuficiente ou integridade referencial.
 - `422 Unprocessable Entity`: dados inválidos.
+- `503 Service Unavailable`: chave administrativa não configurada no servidor.
 - `500 Internal Server Error`: falha inesperada.
 
 Erros são retornados em JSON:
@@ -131,7 +187,7 @@ Erros são retornados em JSON:
 npm test
 ```
 
-Os testes verificam a rota de saúde, proteção administrativa, validação dos cadastros e resposta de rotas inexistentes.
+Os testes chamam diretamente o `app.fetch` do Hono e verificam a rota de saúde, a proteção administrativa, a validação dos cadastros e a resposta para rotas inexistentes.
 
 Para validar os tipos e gerar a versão compilada:
 
@@ -140,6 +196,15 @@ npm run typecheck
 npm run build
 ```
 
-## Estrutura do banco
+## Banco de dados
 
-O arquivo `database/schema.sql` cria o banco `bd_dsapi` e as cinco tabelas do diagrama ER: `cidades`, `clientes`, `categorias`, `produtos`, `pedidos` e a associativa `pedidos_produtos`, com chaves estrangeiras, índices e restrições de integridade.
+O arquivo `database/schema.sql` cria o banco `bd_dsapi` e as seis tabelas do diagrama ER:
+
+- `cidades`
+- `clientes`
+- `categorias`
+- `produtos`
+- `pedidos`
+- `pedidos_produtos`
+
+As relações usam chaves estrangeiras, índices e restrições de integridade. A tabela associativa `pedidos_produtos` preserva o preço praticado e a quantidade de cada produto no momento da compra.
