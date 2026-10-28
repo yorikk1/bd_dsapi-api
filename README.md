@@ -18,7 +18,7 @@ O projeto utiliza obrigatoriamente o banco MySQL `bd_dsapi` e segue o diagrama E
 ## Estrutura do projeto
 
 ```text
-bd_dsapi-api/
+trabalho-dsapi/
 ├── database/
 │   ├── schema.sql          # banco, tabelas, relações e índices
 │   └── seed.sql            # dados iniciais para testes manuais
